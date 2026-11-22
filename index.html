@@ -1191,6 +1191,7 @@ var QUESTIONS = [
     exp:"Tiêu thụ quá nhiều glucose, saccharose trong thời gian dài có nguy cơ bị béo phì và mắc các bệnh khác như tiểu đường, tim mạch (SGK tr. 133)." }
 ];
 var answers = new Array(QUESTIONS.length).fill(-1);
+var quizStartTime = null, scoreSent = false;
 var quizBox = document.getElementById("quizBox");
 var LETTERS = ["A","B","C","D"];
 
@@ -1218,6 +1219,7 @@ function buildQuiz(){
       b.addEventListener("click", function(){
         if (quizSubmitted) return;
         answers[qi] = oi;
+        if (quizStartTime === null) quizStartTime = Date.now();
         opts.querySelectorAll(".opt").forEach(function(x){ x.classList.remove("sel"); });
         b.classList.add("sel");
         updateAnswered();
@@ -1272,6 +1274,15 @@ function doSubmit(){
     ? "🎉 Xuất sắc! Em đạt " + score + "/10 điểm. Em đã nắm chắc kiến thức về carbohydrate rồi!"
     : "Em đạt " + score + "/10 điểm. Hãy xem lại phần giải thích ở các câu chưa đúng rồi làm lại nhé!";
   banner.scrollIntoView({ behavior: "smooth", block: "center" });
+  if (!scoreSent) {
+    scoreSent = true;
+    try {
+      var secs = Math.max(0, Math.round((Date.now() - (quizStartTime || Date.now())) / 1000));
+      var dur = Math.floor(secs / 60) + " phút " + (secs % 60) + " giây";
+      var detail = QUESTIONS.map(function(item, qi){ return (qi + 1) + ": " + (answers[qi] < 0 ? "-" : LETTERS[answers[qi]]) + "/" + LETTERS[item.ans]; }).join(", ");
+      fetch("https://script.google.com/macros/s/AKfycbxfbmYFP6P1aGicOw6v_fHSTdN2OBaBwwgJBwVb8yxs6QhPQzmZIwJVrTqO-MXoUak/exec", {method:"POST", mode:"no-cors", headers:{"Content-Type":"text/plain"}, body: JSON.stringify({name: currentStudent.name, className: currentStudent.cls, score: score, correct: score, detail: detail, duration: dur})}).catch(function(){});
+    } catch (e) {}
+  }
   /* Điểm hiện chỉ lưu trên máy (localStorage). Gửi điểm về Google Sheets sẽ được thêm sau khi có Web App URL. */
 }
 var quizModal = document.getElementById("quizModal");
@@ -1295,6 +1306,7 @@ document.getElementById("confirmSubmit").addEventListener("click", function(){
 document.getElementById("resetQuiz").addEventListener("click", function(){
   answers = new Array(QUESTIONS.length).fill(-1);
   quizSubmitted = false;
+  scoreSent = false; quizStartTime = null;
   buildQuiz();
   updateAnswered();
   var banner = document.getElementById("scoreBanner");
@@ -1320,6 +1332,7 @@ function enterApp(){
   document.getElementById("bestScore").textContent = bestScore === null ? "—" : bestScore + "/10";
   answers = new Array(QUESTIONS.length).fill(-1);
   quizSubmitted = false;
+  scoreSent = false; quizStartTime = null;
   buildQuiz();
   updateAnswered();
   var banner = document.getElementById("scoreBanner");
